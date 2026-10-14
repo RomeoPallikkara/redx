@@ -235,6 +235,7 @@ redx/
   validate.py    scoring against a labelled set
   data/          SUDA templates and the provenance of all templates (folder_description.txt)
 tests/           pytest suite on synthetic spectra
+docs/logo/       logo, light and dark variants (SVG)
 ```
 
 ## Licence
