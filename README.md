@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/redx_logo_dark.svg">
+    <img src="docs/logo/redx_logo.svg" alt="RedX" width="360">
+  </picture>
+</p>
+
 # RedX
 
 Template-based redshift and classification for SPHEREx spectrophotometry.
