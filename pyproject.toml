@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "redx"
+version = "0.1.0"
+description = "Template-based redshift and classification for SPHEREx spectrophotometry"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Romeo Pallikkara" }]
+keywords = ["astronomy", "spectroscopy", "SPHEREx", "quasars", "redshift", "photometric-redshift"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "numpy>=1.21",
+    "astropy>=5.0",
+    "matplotlib>=3.5",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+redx = "redx.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/romeopallikkara/redx"
+
+[tool.setuptools.packages.find]
+include = ["redx*"]
+
+[tool.setuptools.package-data]
+redx = ["data/**/*"]

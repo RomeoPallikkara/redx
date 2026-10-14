@@ -1,0 +1,111 @@
+redx/data -- template spectra bundled with RedX. Checked 2026-10-14.
+Only SUDA is bundled: its CC BY 4.0 licence allows redistribution. The other template sets carry no licence
+that allows redistribution, so redx/sources.py downloads them from their providers on first use, verifies the
+download checksum and builds the templates below into REDX_CACHE (default ~/.cache/redx).
+Air or vacuum wavelengths: not stated in the Selsing and SWIRE files; at SPHEREx R ~ 40 the difference
+(3e-4) is negligible.
+
+suda/  57 files, teff<Teff>_logg<logg>.txt (Teff 700-3000 K)
+  Columns: wave_um, normalized_flux, normalized_flux_err, n_contrib; one Teff/logg bin per file.
+  Source: SPHEREx Ultracool Dwarf Spectrophotometric Atlas (SUDA; Tu, Wang, Huang, Chen & Liu 2026, ApJ 1008,
+  250, doi:10.3847/1538-4357/ae9082), Zenodo record 20659257 (doi:10.5281/zenodo.20659257), v1, 2026-06-12,
+  https://zenodo.org/records/20659257, licence CC BY 4.0. Byte-identical to atlas/spectra/ in SUDA.zip
+  (md5 5394c30540804f62182887e7e5612e17),
+  unmodified. normalized_flux is f_lambda: the median of the atlas' uJy source spectra in each Teff bin
+  matches normalized_flux * lambda^2. RedX converts it to f_nu on reading.
+
+Downloaded on first use (not in the repository)
+
+selsing/  selsing16_smc_ebv{000,005,010,020,030,050}.sed, rest wavelength [A] and f_lambda [arbitrary], 2200
+  log-spaced points over 1000-250000 A. Built from Selsing2015.dat, the X-shooter quasar composite of Selsing et
+  al. (2016, A&A 585, A87, doi:10.1051/0004-6361/201527096), https://raw.githubusercontent.com/jselsing/
+  QuasarComposite/master/Selsing2015.dat (sha256 dce055acdd378444e35acad292ccf2fb00c2dc381216e5cc1d81083753f11c12;
+  repository README: "Feel free to download and use, but please cite as Selsing et al. 2016 A&A 585, A87").
+  Recipe: zero (masked) pixels dropped; beyond the red edge a power law f_lambda ~ lambda^-1.5 normalised to the
+  mean flux over 11150-11350 A; resampled to the grid; SMC extinction of Pei (1992, ApJ 395, 130,
+  doi:10.1086/171637; fit of Table 4, R_V = 2.93 of Table 2, A_B = (R_V + 1) E(B-V)) at E(B-V) = 0, 0.05,
+  0.10, 0.20, 0.30, 0.50. Reproduces byte for byte the files bundled with earlier versions (checked 2026-10-14).
+
+swire/  {Ell5,Sc,M82,Arp220}_template_norm.sed, rest wavelength [A] and f_lambda [arbitrary], from the SWIRE
+  template library (Polletta et al. 2007, ApJ 663, 81, doi:10.1086/518113),
+  http://www.iasf-milano.inaf.it/~polletta/templates/data/swire_library.tar.gz
+  (sha256 34cce03a16fde1b3f0da0a39b84ac38ba5c1d526697200d72beed0fed3f9b48c). The library page asks users to
+  cite Polletta et al. (2007). Sc and M82 contain 2 and 3 exact duplicate rows, which RedX drops on reading.
+
+btsettl/  optional (~540 MB download; python -m redx.sources --btsettl): btsettl_cifist_T<Teff>_g5.0.txt for
+  Teff 3200, 3500, 3800, 4200, 4600, 5000, 5500, 6000, 7000 K; wavelength [A] and f_lambda [erg/s/cm2/A], 3728
+  points uniform in ln(lambda) over 5000-60000 A. BT-Settl CIFIST2011 model atmospheres (Allard, Homeier & Freytag
+  2012, Phil. Trans. R. Soc. A 370, 2765, doi:10.1098/rsta.2011.0269; solar metallicity, log g 5.0) from the SVO
+  theory server, http://svo2.cab.inta-csic.es/theory/newov2/ssap.php?model=bt-settl-cifist&fid=<fid>, fid 179,
+  200, 221, 249, 277, 305, 340, 375, 445 (same Teff order). The SVO model page lists the references to cite and
+  states no licence (checked 2026-10-14). Recipe: Gaussian smoothing to FWHM lambda/500, 3 points per FWHM.
+  sha256 of the VOTables downloaded on 2026-10-14:
+    7d3cbdf32bf941ed0f1ec91b7619d0b975460584b118681b0dc31233b531270c  btsettl_cifist_T3200_g5.0.xml
+    4b62256e9263e57dd05cc1ff551ddb9b7eb9c88615545645dd6ef7defff3863b  btsettl_cifist_T3500_g5.0.xml
+    1731fd7a33eac4ee683fc26bcc0da9666a34dc9bd6d9d8563b14b99f92d8a8fb  btsettl_cifist_T3800_g5.0.xml
+    f736f525a4b7fa0319a22109f2eb94cb52f4439a6a626e07dbaa2adf2dc5f45f  btsettl_cifist_T4200_g5.0.xml
+    1c15bebdcd86fe696720a3c04adcbe6e97b33f1d789cef0c8cc4981dc694a18f  btsettl_cifist_T4600_g5.0.xml
+    f75d2e624a5b4f2e895276c3ef2e4bdf240147cb39bc44be0779297cd3d2802d  btsettl_cifist_T5000_g5.0.xml
+    497f78c09084aa62abdd619b681c74ab7b5420487881b00e586d3d146585e1e9  btsettl_cifist_T5500_g5.0.xml
+    3b8f8989d5ff527bc2d8cffaa08eaf53d8f69975e6dca8b9b771e47c1ab138ad  btsettl_cifist_T6000_g5.0.xml
+    50a6edf6c257209030b5a05ea9cdc3ba659dfe4b9c92a2445761861b341e34e2  btsettl_cifist_T7000_g5.0.xml
+
+
+sha256 of the bundled files:
+2c36961a07582b846e934e8b713256397083e44901653f41ac2b7f31fadbbca4  suda/teff0700_logg5.5.txt
+32efae21577966035d90281e7002c1195823bcbab27a29b47a5e12059477fcae  suda/teff0800_logg5.5.txt
+e643fab0b35bccfbea96dc6942aec5fdac0000a2b1937d36a36b79ea4b6645d7  suda/teff0900_logg5.5.txt
+e2a58d973b6e5adadeb5b688ab5b01270bdb091bd3d4ff37331096b0db8fbdab  suda/teff0900_logg6.0.txt
+af991df9ef75c3171b0e4a6ae78d9883855bc82e69b4791839e67d9afad21bb2  suda/teff1000_logg5.5.txt
+1d0fd24943673545566b873d93de25dd418b62d7a56af76bfda2e5a3494a19ce  suda/teff1100_logg5.0.txt
+5cb7ae496cf7b1609cd32beb1efb8d729eccefc166965b522726f9978b493fa3  suda/teff1100_logg5.5.txt
+2ffff4a7babc27b9b47d3bad9e23c33d5ff9de673a2e58b41a61ded2bb854a12  suda/teff1200_logg5.0.txt
+ebae8194b356c535f0889da77625d1071ea4ea4b8a7e0695f418cd2a63dee948  suda/teff1200_logg5.5.txt
+9e6ad57656f1440de34265ce8bd44309539a36a6b25e9c2746be88163de297ad  suda/teff1400_logg6.0.txt
+027028926ec885ede8b7dcd26fed2379a2ad20a7b27f4ce8a54041daf0fe37e2  suda/teff1500_logg5.0.txt
+6761d5a5d1455e96eba1b58e244740d78eb12cdb34ca2294723aa5d5ee23d625  suda/teff1500_logg5.5.txt
+58d9918e3bcf784e3ac2e9f35094d9e1f2b18fcc501f4e04cffa913da5efdb23  suda/teff1500_logg6.0.txt
+28edbfbde9f8d791abe0ed7632593db32a0ea61e7d293bed874227bcda012dfe  suda/teff1600_logg5.0.txt
+2f4959144519d8a4d291934963b976515c738aa237755369d8ad1e6864396622  suda/teff1600_logg5.5.txt
+ad49ef7ea23c2d4e7e071e2357d6b32ce65217a63ad78b45d41cc539ae8ed26f  suda/teff1600_logg6.0.txt
+ccab346143b18560bccb380e6fd5df7c83842c709d7983e7d21e3b636b8f158c  suda/teff1700_logg4.5.txt
+bbf38d3e5bba93de1fe260d643187f70064168cd68ad4ac5ff96a245f039c0ab  suda/teff1700_logg5.0.txt
+1eb3ae9d28836378590474d54c6db83470b2ec14aa81c20f09f1edca77f55aa6  suda/teff1700_logg5.5.txt
+25e57cf8d4671c5c9acbc3c3dcd6c118ff905085623406469b6c826966d8513d  suda/teff1800_logg4.5.txt
+7310891d1a0cf533195ecc83a98c8f268472397a00725bacee3597c1c8ab9102  suda/teff1800_logg5.0.txt
+2d3d71bd25ee924c9c4cfd104aa7b57d7c1c546f00ecfdcfa974a95aa60b7281  suda/teff1800_logg5.5.txt
+ea33ac69723cf5cf7fe20c247a355570af697206a63688d4abbe933f1f3089db  suda/teff1900_logg4.5.txt
+6ab45a8e690c8f9d665af5cfe890d945c4f8f01a930a9f2fcf776ed8641aa649  suda/teff1900_logg5.0.txt
+d3e22626a3b4566e6268dc73203c72e00dd1f195a77886a697203fa36da4c41b  suda/teff1900_logg5.5.txt
+4badea29f3f88f2c03206768bcc47a500d96e56562e79b69796b43c58de3c83c  suda/teff2000_logg4.5.txt
+a89eee04378370e0ea7ed76199af37e7a85554c52fe5b5a02a2f5d725b95163d  suda/teff2000_logg5.0.txt
+dd49bd16c9bc413a84fa0bfe5bbe7db67b8057bda1eb6532dc3b8a34cf99b206  suda/teff2000_logg5.5.txt
+af8315dbec4be893226efb0b2513228085e737e7cdad6b904c55a2e538822293  suda/teff2100_logg4.0.txt
+ed88e6a9c4487b2e4c0bbf9a3eae9e571d6f083bf3edc7db2a67b03733e32874  suda/teff2100_logg4.5.txt
+b30356bf7bb2243ba5ac0410d4f7db9124c71a0da14369f7dac95c385fb4814c  suda/teff2100_logg5.0.txt
+0da59cdb9cb2018c28de5701ca3c47d5a41a27a9f771aa918e27a5e1f48683b8  suda/teff2100_logg5.5.txt
+e4557e9041c1518e664e1cf4876961d03f7df0cfaa5802bf5622103bcb181971  suda/teff2200_logg4.0.txt
+b102076e599ed18d19e0d9393682579098eebde93dbc9b5efdf7dc90f8d05880  suda/teff2200_logg4.5.txt
+2a1bc9a01404323056add01a82c9caaef17fc14999cc2faea9f52101749d0c05  suda/teff2200_logg5.0.txt
+964715b846bcf4ae2a1355167cd43a173069ecd239bd861428b5b0b357600f7b  suda/teff2200_logg5.5.txt
+6aff9b699bc19f08c034efb53e88c1c2f1d61e0b236de0ca5f90c386f579ba75  suda/teff2300_logg4.5.txt
+f807d4319554ab665ba423a77954a1dfb7bae7338ece20dc7b320dab19c90c01  suda/teff2300_logg5.0.txt
+9efbcfa7f6ae098a52c618f22c023f69fde3a01052e64dad9d1a11b5e976258e  suda/teff2300_logg5.5.txt
+5a51602fe6bf0bd24711b5de39945a55046b57740f4e26a88056218da1aec09c  suda/teff2400_logg4.0.txt
+b70278caf05278fbd6550c925ef52d159c5d2a22bdb08959a5079b7c4a3c4852  suda/teff2400_logg4.5.txt
+89b8a758a09d8ca19de5125be2bb9e771acf7acd41fa1c1b8aa8f820572a8648  suda/teff2400_logg5.0.txt
+bb91a3522154a9e97231d3c2d8df15122c8da8c77e67741a04435d340352a1c3  suda/teff2400_logg5.5.txt
+b855e252f4f2511da07bab4e854de4ff37d3e9cc6ff6c88be3eee8077249e5a6  suda/teff2500_logg4.0.txt
+192cb4e77437583b58dfe4361fa9e65d117491df76be846fee2a0bd5c739a1dc  suda/teff2500_logg4.5.txt
+60ccb15b92da9d762941afb50230250682b8dd4cbcb86c8511c04ba16b69e0ae  suda/teff2500_logg5.0.txt
+1c133497ea1d7f330aba37beb1e57a56a04466c345a58b64e99d172fef91aa23  suda/teff2500_logg5.5.txt
+5120734416542fc5087c5fe4a23d42d4f7667bc2823abf22b2f3347a776db391  suda/teff2600_logg4.5.txt
+296e9d3bfc2af3ed765f2a91c35237b5412b61491223ebceec8dea7be7caa1dc  suda/teff2600_logg5.0.txt
+b60ed03db1780c146c9186be443d6c4b9acfc6e0eb9f8197c642bdad6907bd64  suda/teff2600_logg5.5.txt
+e9787b73bece7bebd09edbd655859366f971dcebf92852f4bd7dbcb280590bea  suda/teff2700_logg4.5.txt
+53dc79bdcf7fbd1338aa517753dd61390d9b910b1a8cee4e159e71e243f3c3f4  suda/teff2700_logg5.0.txt
+98ac81b66972a75c389cefa0deff468541b563c55b6a70fbd9e23c2f576f86f8  suda/teff2700_logg5.5.txt
+08123a3fefa968fa78dacf07cc897380dce0ef9c219e0fffbde121bb054f11eb  suda/teff2800_logg4.5.txt
+77ece3e3b29b9bb25640ef6e9030b4b7e8e9130b408ddf7ce07ff277c2986b74  suda/teff2800_logg5.0.txt
+80ef27d7c8ead4aca0958cb109a1d805aeaa9ad20cbf014ae6d07ee196c86219  suda/teff2900_logg5.0.txt
+760a1db94801d9835416d900871964f7b69cf49cda0376e75ae7ace3d3af39ff  suda/teff3000_logg5.0.txt
