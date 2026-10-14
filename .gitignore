@@ -15,6 +15,3 @@ venv/
 redx_results.csv
 redx_validation.csv
 .pytest_cache/
-
-# Local checks, not part of the package
-code_scribble/
