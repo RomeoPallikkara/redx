@@ -1,8 +1,4 @@
-"""The one place RedX figure style is defined.
-
-Publication style: serif, ticks pointing in on all four sides, minimal in-plot
-text. Import `apply()` rather than calling `plt.rcParams.update` in a script.
-"""
+"""Figure style: serif, ticks in on all sides."""
 
 RC = {
     'font.family': 'serif',
@@ -16,8 +12,6 @@ RC = {
     'ytick.minor.visible': True,
     'savefig.bbox': 'tight',
 }
-
-# Figure geometry and per-class template colours, shared by every RedX figure.
 FIGSIZE = (7.6, 4.8)
 DPI = 200
 CLASS_COLOUR = {'qso': '#b40426', 'star': '#20558a', 'galaxy': '#2e7d32'}
@@ -27,5 +21,4 @@ LINE_COLOUR = '#1f5fbf'
 
 
 def apply(plt):
-    """Apply the RedX rcParams to an already-imported pyplot."""
     plt.rcParams.update(RC)

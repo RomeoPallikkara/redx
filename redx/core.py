@@ -1,4 +1,4 @@
-"""RedX top-level: read a SPHEREx spectrum, classify it, and return a redshift with cross-checks and flags."""
+"""Classification and redshift of one SPHEREx spectrum."""
 import numpy as np
 from .reader import read_spectrum
 from .templates import build_library
@@ -6,11 +6,9 @@ from .fit import fit_spectrum, peak_interval
 from .lines import residuals, line_redshift, line_features, line_support, line_signif
 
 _LIBRARY = None
-BLEND_DCHI2 = 49.0                     # scaled chi2 gain to call a star/galaxy fit a blended quasar (inf: off)
-# Systematic redshift error / (1+z), added in quadrature to the 68% interval (~1100 km/s): fitted so that the
-# interval covers 68% of 804 spectroscopic quasars of a private test set, 64% of the other 809.
-SIGMA_Z_SYS = 0.0036
-LINE_SIGNIF = 3.0                      # combined significance of the strong lines at z needed for a QSO
+BLEND_DCHI2 = 49.0      # scaled chi2 gain for a star/galaxy fit to become a blended QSO (inf: off)
+SIGMA_Z_SYS = 0.0036    # systematic error / (1+z) added to the 68% interval, calibrated on spectroscopic QSOs
+LINE_SIGNIF = 3.0       # line significance at z required for a QSO
 
 
 def _library():
@@ -21,9 +19,8 @@ def _library():
 
 
 def _dealias(spec, resid, fit):
-    """Among the P(z) peaks above 0.2 of the highest (comparable chi2), the redshift supported by the most
-    emission lines; ties go to the more probable, then the lower, redshift. Breaks single-line aliases (an Hb
-    taken for Ha) toward the multi-line solution. Returns (z, n_line_support)."""
+    """Of the P(z) peaks above 0.2 of the maximum, the one supported by most lines (then the more probable,
+    then the lower z). Returns (z, n_line_support)."""
     pz, zg, z0 = fit['pz'], fit['zgrid'], fit['z']
     if pz is None:
         return z0, line_support(spec, resid, z0)
@@ -35,14 +32,13 @@ def _dealias(spec, resid, fit):
 
 
 def classify(path_or_spec, dz=0.002):
-    """Run the full RedX pipeline on one spectrum. Returns a flat result dict (one row of the output table)."""
+    """Classify a spectrum (path or reader.Spectrum); returns a flat dict of results."""
     spec = path_or_spec if hasattr(path_or_spec, 'lam_um') else read_spectrum(path_or_spec)
     snr = spec.median_snr
     out = {'class': 'inconclusive', 'z_RedX': np.nan, 'z_lo': np.nan, 'z_hi': np.nan, 'z_lines': np.nan,
            'n_lines': 0, 'n_line_support': 0, 'line_signif': np.nan, 'max_line_snr': np.nan, 'red_slope': np.nan,
-           'signif': np.nan,
-           'redchi2': np.nan, 'n_bins': spec.n, 'median_snr': snr, 'template': '', 'flags': 'too_few_bins',
-           'verdict': 'inconclusive: too few good bins', 'spec': spec}
+           'signif': np.nan, 'redchi2': np.nan, 'n_bins': spec.n, 'median_snr': snr, 'template': '',
+           'flags': 'too_few_bins', 'verdict': 'inconclusive: too few good bins', 'spec': spec}
     if spec.n < 6:
         return out
 
@@ -51,11 +47,8 @@ def classify(path_or_spec, dz=0.002):
     zl, n_lines, _, _ = line_redshift(spec, resid, dz=dz)
     max_line_snr, red_slope = line_features(spec, resid)
 
-    # Too noisy for any redshift (the spectra an observer leaves blank): n_good = bins detected above their noise.
     n_good = int(np.sum((spec.sigma > 0) & (spec.flux > spec.sigma)))
     low_quality = snr < 2.0 or spec.n < 10 or n_good < 6
-    # A QSO needs its emission lines where the template puts them; a red-rising continuum with a decisive
-    # template preference is a weaker secondary route.
     red_rising = np.isfinite(red_slope) and red_slope > 0.0
     strong_pref = 9.0 < fit['dchi2_class'] < np.inf
 

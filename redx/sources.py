@@ -1,11 +1,7 @@
-"""Templates RedX may not redistribute: downloaded from their providers on first use, built as described in
-data/folder_description.txt and cached in REDX_CACHE (default ~/.cache/redx).
+"""Templates without a redistribution licence, downloaded on first use and cached in REDX_CACHE (default
+~/.cache/redx): Selsing and SWIRE automatically, BT-Settl (~540 MB) on request.
 
-  selsing : Selsing et al. (2016) composite, GitHub jselsing/QuasarComposite (automatic)
-  swire   : SWIRE library, Polletta et al. (2007) (automatic)
-  btsettl : BT-Settl CIFIST stars, Allard et al. (2012), SVO theory server, ~540 MB (optional)
-
-    python -m redx.sources [--btsettl]      # download and build now
+    python -m redx.sources [--btsettl]
 """
 import gzip
 import hashlib
@@ -25,7 +21,7 @@ SWIRE_NAMES = ('Ell5', 'Sc', 'M82', 'Arp220')
 BTSETTL = 'http://svo2.cab.inta-csic.es/theory/newov2/ssap.php?model=bt-settl-cifist&fid={}'
 BTSETTL_FID = {3200: 179, 3500: 200, 3800: 221, 4200: 249, 4600: 277, 5000: 305, 5500: 340, 6000: 375, 7000: 445}
 SELSING_EBV = (0.0, 0.05, 0.10, 0.20, 0.30, 0.50)
-# Pei (1992) Table 4, SMC: (lambda_i [um], a_i, b_i, n_i); R_V = 2.93 (Table 2)
+# Pei (1992) SMC, Table 4: (lambda_i [um], a_i, b_i, n_i); R_V = 2.93
 _PEI_SMC = ((0.042, 185.0, 90.0, 2.0), (0.08, 27.0, 5.5, 4.0), (0.22, 0.005, -1.95, 2.0),
             (9.7, 0.010, -1.95, 2.0), (18.0, 0.012, -1.80, 2.0), (25.0, 0.030, 0.0, 2.0))
 
@@ -37,13 +33,12 @@ def _get(url, sha256=None):
         if r.headers.get('Content-Encoding') == 'gzip':
             data = gzip.decompress(data)
     if sha256 and hashlib.sha256(data).hexdigest() != sha256:
-        raise RuntimeError(f'{url}: checksum differs from the one RedX was validated with ({sha256})')
+        raise RuntimeError(f'{url}: unexpected checksum')
     return data
 
 
 def _selsing(out):
-    """Selsing composite + f_lambda ~ lambda^-1.5 tail (matched to the mean over 11150-11350 A) on 2200 log points,
-    1000-250000 A, SMC-reddened (Pei 1992) at each E(B-V)."""
+    """Selsing composite with an f_lambda ~ lambda^-1.5 tail, SMC-reddened at each E(B-V)."""
     d = np.loadtxt(io.BytesIO(_get(*SELSING)), comments='#')
     lam, f = d[:, 0], d[:, 1]
     ok = np.isfinite(f) & (f > 0)
@@ -71,7 +66,7 @@ def _swire(out):
 
 
 def _btsettl(out, R=500.0):
-    """BT-Settl spectra smoothed with a Gaussian of FWHM lambda/R, 3 points per FWHM, 0.5-6 um."""
+    """BT-Settl spectra smoothed to FWHM lambda/R, 3 points per FWHM, 0.5-6 um."""
     from astropy.io.votable import parse_single_table
     step = 1.0 / R / 3.0
     grid = np.exp(np.arange(np.log(5000.0), np.log(60000.0), step))
@@ -95,7 +90,7 @@ _BUILD = {'selsing': (_selsing, len(SELSING_EBV)), 'swire': (_swire, len(SWIRE_N
 
 
 def path(name, fetch=True):
-    """Directory holding the built `name` templates; built on first use (fetch=False: None if absent)."""
+    """Directory of the `name` templates, built on first use; None if absent and fetch is False."""
     d = os.path.join(CACHE, name)
     build, n = _BUILD[name]
     if not (os.path.isdir(d) and len(os.listdir(d)) == n):
@@ -107,9 +102,7 @@ def path(name, fetch=True):
         except Exception as e:
             for f in os.listdir(d):
                 os.remove(os.path.join(d, f))
-            raise RuntimeError(f'redx: could not build the {name} templates ({e}). They are downloaded once from '
-                               f'their providers; check the connection, or set REDX_CACHE to a directory '
-                               f'that already holds them.') from e
+            raise RuntimeError(f'redx: could not download the {name} templates ({e})') from e
     return d
 
 

@@ -1,8 +1,7 @@
-"""RedX -- SPHEREx spectrum redshift + classification (QSO / galaxy / star), template-based, no ML.
+"""RedX: template-based redshift and classification for SPHEREx spectra.
 
-    from redx import classify
-    r = classify("spectrum.tbl")
-    print(r['class'], r['z_RedX'], r['verdict'])
+    import redx
+    r = redx.classify('spectrum.tbl')
 """
 from .core import classify
 from .reader import read_spectrum, Spectrum

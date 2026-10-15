@@ -1,8 +1,4 @@
-"""RedX tests on synthetic spectra: templates sampled through SPHEREx channels, Gaussian noise, binned as a .tbl.
-The first run downloads the Selsing and SWIRE templates (redx.sources).
-
-    pip install -e .[test] && pytest
-"""
+"""Tests on synthetic spectra (templates through SPHEREx channels, Gaussian noise, binned as a .tbl)."""
 import numpy as np
 import pytest
 from astropy.table import Table
@@ -17,7 +13,7 @@ LIB = {t.name: t for t in build_library()}
 
 
 def raw(name, z, snr=20.0, seed=1, n=260):
-    """Raw points of template `name` at redshift z, each averaged over one SPHEREx channel, with noise."""
+    """Noisy channel-averaged points of template `name` at redshift z."""
     rng = np.random.default_rng(seed)
     lam = np.sort(rng.uniform(0.76, 5.0, n))
     f = Binned(LIB[name], 0.0).flux_obs(lam, z)

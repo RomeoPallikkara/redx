@@ -1,23 +1,12 @@
-"""Read a SPHEREx spectrum into a clean, monotonic, inverse-variance-binned form.
-
-Accepts either
-  - an IPAC `.tbl` of forced photometry as served by IRSA (columns lambda [um], flux [uJy], flux_err [uJy],
-    flags, fit_ql), binned here, or
-  - an already binned spectrum, as CSV or as a FITS table, with columns wavelength_angstrom,
-    flux_ujy_weighted_mean, flux_ujy_weighted_sem and optionally ignored (rows with ignored != 0 are dropped).
-
-Fluxes are f_nu in micro-Jansky, wavelengths observed-frame. Binning of a `.tbl`: keep all finite, positive-error
-points -- the SPHEREx `flags` column is dominated by an informational bit, so cutting on flags==0 throws away
-almost all the data -- then combine repeat detections in log-lambda bins by inverse-variance weight. Per-channel
-S/N is ~2, so the continuum and lines only emerge after this binning.
-"""
+"""SPHEREx spectra: IRSA forced-photometry .tbl (binned here) or an already binned .csv / .fits; f_nu in uJy.
+The .tbl flags column is not used: it is dominated by an informational bit."""
 import numpy as np
 from astropy.table import Table
 from .lines_data import SPHEREX_MIN_UM, SPHEREX_MAX_UM
 
 
 class Spectrum:
-    """A cleaned SPHEREx spectrum. lam_um ascending; flux/sigma in micro-Jansky (f_nu)."""
+    """Wavelength [um, ascending], flux and error [uJy]."""
 
     def __init__(self, lam_um, flux_ujy, sigma_ujy, meta=None):
         o = np.argsort(lam_um)
@@ -37,7 +26,7 @@ class Spectrum:
 
 
 def _bin_inverse_variance(lam, fl, fe, nbin=44):
-    """Inverse-variance mean of repeat detections in `nbin` log-lambda bins spanning the data."""
+    """Inverse-variance means in nbin log-lambda bins."""
     if len(lam) < 2 or not lam.max() > lam.min():
         return np.array([]), np.array([]), np.array([])
     idx = np.clip(np.digitize(lam, np.geomspace(lam.min(), lam.max(), nbin + 1)), 1, nbin) - 1
@@ -54,9 +43,9 @@ def _col(t, name):
 
 def _read_tbl(path, nbin=44):
     t = Table.read(path, format='ipac')
-    lam, fl, fe = _col(t, 'lambda'), _col(t, 'flux'), _col(t, 'flux_err')       # um, uJy, uJy
+    lam, fl, fe = _col(t, 'lambda'), _col(t, 'flux'), _col(t, 'flux_err')
     good = np.isfinite(fl) & np.isfinite(fe) & (fe > 0) & (lam > SPHEREX_MIN_UM) & (lam < SPHEREX_MAX_UM)
-    if 'fit_ql' in t.colnames:                     # drop obviously failed forced-photometry fits
+    if 'fit_ql' in t.colnames:
         good &= (_col(t, 'fit_ql') > 0) & (_col(t, 'fit_ql') < 5)
     meta = {'source': path, 'n_raw': int(good.sum())}
     if 'ra' in t.colnames and len(t):
@@ -74,8 +63,7 @@ def _from_binned(t, meta):
 
 
 def read_spectrum(path, nbin=44):
-    """`.tbl`: IPAC forced photometry, binned here to `nbin` bins; `.csv` or `.fits`: an already binned
-    spectrum (for FITS, scalar header keywords are copied into meta, lower-cased)."""
+    """Read a .tbl (binned to nbin bins), .csv or .fits spectrum; FITS header keywords go to meta."""
     p = str(path).lower()
     if p.endswith('.csv'):
         return _from_binned(Table.read(path, format='csv'), {'source': path})

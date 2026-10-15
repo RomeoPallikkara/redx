@@ -1,23 +1,10 @@
-"""The RedX diagnostic figure -- one implementation, used by the CLI and by every script.
-
-Observed SPHEREx spectrum with its 1-sigma band, the best-fit template, labelled
-emission lines at the fitted redshift, and an optional annotation box.
-
-    from redx.plot import diagnostic
-    diagnostic(result, out='obj.png')                        # write a PNG
-    diagnostic(result, show=True)                            # open a window
-    diagnostic(result, out='obj.png', annotations={'z_spec': 4.83})
-
-The matplotlib backend is chosen when the figure is drawn, not at import time,
-so the same function can save on a headless machine and show a window locally.
-"""
+"""Diagnostic figure: spectrum with 1-sigma band, fitted model and emission lines at the fitted redshift."""
 import os
 import numpy as np
 from . import style
 from .templates import template_origin
 from .lines_data import STRONG_LINES, SPHEREX_MIN_UM, SPHEREX_MAX_UM
 
-# Line positions come from STRONG_LINES, so the figure and the line finder cannot disagree.
 _LABEL = {'Lya': r'Ly$\alpha$', 'CIV': 'C IV', 'CIII': 'C III]', 'MgII': 'Mg II',
           'Hb': r'H$\beta$', 'OIII': '[O III]', 'Ha': r'H$\alpha$'}
 _XTICKS = [0.8, 1, 1.5, 2, 3, 4, 5]
@@ -25,12 +12,12 @@ _PLT = None
 
 
 def _pyplot(show):
-    """Import pyplot, picking a backend that can do what the caller asked for."""
+    """pyplot with a backend that can show a window if asked, Agg when headless."""
     global _PLT
     import matplotlib
     if _PLT is None:
         if not show and not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY'):
-            matplotlib.use('Agg')          # headless: never try to open a window
+            matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         _PLT = plt
         style.apply(plt)
@@ -45,7 +32,7 @@ def _pyplot(show):
 
 
 def fmt_z(v):
-    """Format an annotation value: floats as a redshift, strings verbatim."""
+    """Redshift to 3 decimals; strings unchanged."""
     if isinstance(v, str):
         return v
     try:
@@ -56,8 +43,7 @@ def fmt_z(v):
 
 
 def _model(result, spec, lam):
-    """The fitted model on `lam`: the winning template (plus the neighbour template for a blend), binned as in
-    the fit and scaled to `spec` by weighted least squares. None if there is no fit."""
+    """Fitted model on lam (with the neighbour for a blend), scaled to spec; None without a fit."""
     from .core import _library
     from .fit import binned_library
     fit = result.get('_fit') or {}
@@ -74,17 +60,8 @@ def _model(result, spec, lam):
 
 def diagnostic(result, out=None, show=False, annotations=None, spec=None,
                title_id=None, lines=True, info=True, dpi=style.DPI, figsize=style.FIGSIZE):
-    """Draw the RedX diagnostic for one classified spectrum.
-
-    result      : dict from redx.classify()
-    out         : path to write a PNG (None = do not save)
-    show        : open an interactive window
-    annotations : extra rows for the box, e.g. {'z_spec': 4.8}
-    spec        : override spectrum to draw (e.g. a finer rebinning for display)
-    title_id    : object id shown on the first line of the box
-    lines       : mark emission lines at the fitted redshift (QSOs only)
-    info        : draw the box with id, class, redshift and template (with lines=False: no text in the axes)
-    """
+    """Figure for a classify() result. out: PNG path; annotations: extra box rows, e.g. {'z_spec': 4.8};
+    spec: spectrum to draw instead (e.g. finer binning); lines: mark QSO lines; info: draw the text box."""
     plt = _pyplot(show)
     spec = spec if spec is not None else result['spec']
     cls, z = result.get('class', ''), result.get('z_RedX', np.nan)
