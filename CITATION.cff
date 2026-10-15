@@ -7,7 +7,7 @@ authors:
     given-names: Romeo
 repository-code: "https://github.com/romeopallikkara/redx"
 license: MIT
-version: 0.1.0
+version: 0.1.0.dev0
 keywords:
   - astronomy
   - SPHEREx

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "redx"
-version = "0.1.0"
+version = "0.1.0.dev0"
 description = "Template-based redshift and classification for SPHEREx spectrophotometry"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -13,6 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Romeo Pallikkara" }]
 keywords = ["astronomy", "spectroscopy", "SPHEREx", "quasars", "redshift", "photometric-redshift"]
 classifiers = [
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Astronomy",
     "Intended Audience :: Science/Research",

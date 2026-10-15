@@ -9,10 +9,10 @@ suda/  57 files, teff<Teff>_logg<logg>.txt (Teff 700-3000 K)
   Columns: wave_um, normalized_flux, normalized_flux_err, n_contrib; one Teff/logg bin per file.
   Source: SPHEREx Ultracool Dwarf Spectrophotometric Atlas (SUDA; Tu, Wang, Huang, Chen & Liu 2026, ApJ 1008,
   250, doi:10.3847/1538-4357/ae9082), Zenodo record 20659257 (doi:10.5281/zenodo.20659257), v1, 2026-06-12,
-  https://zenodo.org/records/20659257, licence CC BY 4.0. Byte-identical to atlas/spectra/ in SUDA.zip
-  (md5 5394c30540804f62182887e7e5612e17),
-  unmodified. normalized_flux is f_lambda: the median of the atlas' uJy source spectra in each Teff bin
-  matches normalized_flux * lambda^2. RedX converts it to f_nu on reading.
+  https://zenodo.org/records/20659257, licence CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  Byte-identical to atlas/spectra/ in SUDA.zip (md5 5394c30540804f62182887e7e5612e17), unmodified.
+  normalized_flux is f_lambda: the median of the atlas' uJy source spectra in each Teff bin matches
+  normalized_flux * lambda^2. RedX converts it to f_nu on reading.
 
 Downloaded on first use (not in the repository)
 
