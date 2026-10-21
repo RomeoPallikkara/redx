@@ -1,5 +1,6 @@
-"""Command line: redx SPEC [--plot out.png | --show]; redx --dir FOLDER [--out results.csv] [--plots DIR]."""
+"""Command line: redx SPEC [--plot out.png | --show]; redx --dir FOLDER [--recursive] [--out results.csv] [--plots DIR]."""
 import os
+import re
 import sys
 import glob
 import csv
@@ -12,9 +13,15 @@ _COLS = ['id', 'class', 'z_RedX', 'z_lo', 'z_hi', 'n_line_support', 'line_signif
          'redchi2', 'n_bins', 'median_snr', 'template', 'flags', 'verdict']
 
 
+SPIFF_BINNED = 'binned_spectrum.csv'
+
+
 def _stem(path):
-    """File name without directory, extension and '_spherex_spectra'."""
+    """File name without directory, extension and '_spherex_spectra'; for a SPIFF binned_spectrum.csv the
+    name of its run folder without '_RA<ra>_DEC<dec>'."""
     stem = os.path.basename(str(path))
+    if stem == SPIFF_BINNED:
+        return re.sub(r'_RA[-+0-9.]+_DEC[-+0-9.]+$', '', os.path.basename(os.path.dirname(os.path.abspath(path))))
     for ext in ('.fits.gz', '.fits', '.fit', '.tbl', '.csv'):
         if stem.lower().endswith(ext):
             stem = stem[:-len(ext)]
@@ -38,6 +45,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog='redx', description='SPHEREx redshift and classification')
     ap.add_argument('spectrum', nargs='?', help='a single .tbl, or a binned .csv or .fits spectrum')
     ap.add_argument('--dir', help='folder of spectra (*.tbl, *.csv, *.fits) to batch')
+    ap.add_argument('--recursive', action='store_true',
+                    help='with --dir: also every SPIFF binned_spectrum.csv in its subfolders (other SPIFF files skipped)')
     ap.add_argument('--out', default='redx_results.csv', help='batch output CSV')
     ap.add_argument('--plot', help='save a diagnostic figure for the single-spectrum mode')
     ap.add_argument('--plots', help='folder to save one diagnostic figure per source (batch mode)')
@@ -49,6 +58,8 @@ def main(argv=None):
 
     if a.dir:
         files = sorted(f for ext in ('tbl', 'csv', 'fits') for f in glob.glob(os.path.join(a.dir, '*.' + ext)))
+        if a.recursive:
+            files += sorted(glob.glob(os.path.join(a.dir, '*', '**', SPIFF_BINNED), recursive=True))
         if not files:
             print('no spectra found in', a.dir)
             return 1

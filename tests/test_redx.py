@@ -91,3 +91,18 @@ def test_cli_batch_and_figure(tmp_path):
     r = redx.classify(tmp_path / 'obj0_spherex_spectra.tbl')
     diagnostic(r, out=tmp_path / 'clean.png', info=False, lines=False)
     assert (tmp_path / 'clean.png').stat().st_size > 0
+
+
+def test_cli_recursive_spiff(tmp_path):
+    lam, f, sig = _bin_inverse_variance(*raw('QSO_selsing_ebv0.00', 2.5), nbin=100)
+    run = tmp_path / 'runs' / 'obj+1_RA10.000000_DEC-5.000000'
+    (run / 'figs' / 'exp1').mkdir(parents=True)
+    Table({'wavelength_angstrom': lam * 1e4, 'flux_ujy_weighted_mean': f, 'flux_ujy_weighted_sem': sig,
+           'ignored': np.zeros(len(lam), int)}).write(run / 'binned_spectrum.csv', format='csv')
+    for aux in (run / 'results.csv', run / 'figs' / 'exp1' / 'result.csv'):
+        aux.write_text('a,b\n1,2\n')
+    out = tmp_path / 'res.csv'
+    assert main(['--dir', str(tmp_path / 'runs'), '--out', str(out)]) == 1
+    assert main(['--dir', str(tmp_path / 'runs'), '--recursive', '--out', str(out)]) == 0
+    res = Table.read(out, format='csv')
+    assert list(res['id']) == ['obj+1'] and list(res['class']) == ['qso']

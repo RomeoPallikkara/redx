@@ -28,6 +28,7 @@ Selsing and SWIRE templates from their providers (< 1 MB) into `~/.cache/redx`
 ```bash
 redx spectrum.tbl                     # classify; --plot out.png writes the figure
 redx --dir FOLDER --out results.csv   # every *.tbl, *.csv, *.fits in FOLDER
+redx --dir RUNS --recursive           # also SPIFF RUNS/<id>_RA*_DEC*/binned_spectrum.csv, id = <id>
 ```
 
 ```python
