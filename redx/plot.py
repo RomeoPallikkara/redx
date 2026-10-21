@@ -99,7 +99,11 @@ def diagnostic(result, out=None, show=False, annotations=None, spec=None,
             [f'{k:<9}= {fmt_z(v)}' for k, v in (annotations or {}).items()]
         if cls == 'qso':
             ns = result.get('n_line_support', 0) or 0
-            rows.append(f'RedX_qual= {ns}-line ' + ('SECURE' if ns >= 2 else 'ALIAS-RISK'))
+            rows.append(f'RedX_qual= {ns}-line ' + ('SECURE' if result.get('secure') else
+                                                    'ALIAS-RISK' if ns < 2 else 'CHECK z'))
+        warn = [f for f in str(result.get('flags', '')).split(';') if f and f != 'ok' and not f.startswith('blend(')]
+        if warn:
+            rows.append(f"flags    = {', '.join(warn)}")
         if template_origin(result.get('template')):
             rows.append(f"template = {template_origin(result.get('template'))}")
         if 'contaminant' in (result.get('_fit') or {}):

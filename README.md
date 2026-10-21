@@ -46,7 +46,9 @@ Main outputs: `class` (`qso`, `galaxy`, `star`, `inconclusive`), `z_RedX` with i
 A QSO is `secure` when its lines are detected at `z_RedX` (`line_signif` > 3), at
 least two lines support it, and `z_lines` agrees within 0.05 (1+z). Flags:
 `single_line_alias_risk`, `z_lines_disagree`, `qso_no_line`, `blend` (quasar plus a
-neighbour in the same pixel), `class_ambiguous`, `marginal_snr`.
+neighbour in the same pixel), `dwarf_dominated_blend` (a quasar plus ultracool-dwarf fit
+with quasar flux share < 0.5, classified as a star), `class_ambiguous`, `marginal_snr`.
+The figure shows `SECURE` only for a secure QSO, and lists the flags other than `blend`.
 
 ## Method
 

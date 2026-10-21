@@ -9,6 +9,7 @@ _LIBRARY = None
 BLEND_DCHI2 = 49.0      # scaled chi2 gain for a star/galaxy fit to become a blended QSO (inf: off)
 SIGMA_Z_SYS = 0.0036    # systematic error / (1+z) added to the 68% interval, calibrated on spectroscopic QSOs
 LINE_SIGNIF = 3.0       # line significance at z required for a QSO
+DWARF_QSO_FRAC = 0.5    # a QSO + ultracool-dwarf blend with a smaller QSO flux share is a dwarf
 
 
 def _library():
@@ -38,7 +39,7 @@ def classify(path_or_spec, dz=0.002):
     out = {'class': 'inconclusive', 'z_RedX': np.nan, 'z_lo': np.nan, 'z_hi': np.nan, 'z_lines': np.nan,
            'n_lines': 0, 'n_line_support': 0, 'line_signif': np.nan, 'max_line_snr': np.nan, 'red_slope': np.nan,
            'signif': np.nan, 'redchi2': np.nan, 'n_bins': spec.n, 'median_snr': snr, 'template': '',
-           'flags': 'too_few_bins', 'verdict': 'inconclusive: too few good bins', 'spec': spec}
+           'flags': 'too_few_bins', 'verdict': 'inconclusive: too few good bins', 'secure': False, 'spec': spec}
     if spec.n < 6:
         return out
 
@@ -57,9 +58,13 @@ def classify(path_or_spec, dz=0.002):
     if low_quality:
         cls, verdict = 'inconclusive', 'inconclusive: too noisy / no usable signal'
     elif blend and blend['dchi2'] > BLEND_DCHI2 and line_signif(spec, resid, blend['z']) > LINE_SIGNIF:
-        fit = {**fit, **blend}
-        cls = 'qso'
-        flags.append(f"blend({blend['contaminant']},qso_frac={blend['qso_frac']:.2f})")
+        if '_SUDA_' in blend['contaminant'] and blend['qso_frac'] < DWARF_QSO_FRAC:
+            cls, verdict = 'star', 'STAR'
+            flags.append(f"dwarf_dominated_blend(qso_frac={blend['qso_frac']:.2f})")
+        else:
+            fit = {**fit, **blend}
+            cls = 'qso'
+            flags.append(f"blend({blend['contaminant']},qso_frac={blend['qso_frac']:.2f})")
     elif cls == 'star':
         verdict = 'STAR'
     elif cls == 'galaxy':
@@ -75,8 +80,8 @@ def classify(path_or_spec, dz=0.002):
         flags += [f for f, bad in (('qso_no_line', not lines_at_z),
                                    ('single_line_alias_risk', lines_at_z and n_support < 2),
                                    ('z_lines_disagree', not agree)) if bad]
-        verdict = f'QSO z={z:.3f} ({n_support} lines, ' + \
-            ('secure)' if lines_at_z and n_support >= 2 and agree else 'check the redshift)')
+        out['secure'] = bool(lines_at_z and n_support >= 2 and agree)
+        verdict = f'QSO z={z:.3f} ({n_support} lines, ' + ('secure)' if out['secure'] else 'check the redshift)')
     if fit['dchi2_class'] < 2.0:
         flags.append(f"class_ambiguous(vs_{fit['runner_up']})")
     if 2.0 <= snr < 4.0:

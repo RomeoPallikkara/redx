@@ -106,3 +106,28 @@ def test_cli_recursive_spiff(tmp_path):
     assert main(['--dir', str(tmp_path / 'runs'), '--recursive', '--out', str(out)]) == 0
     res = Table.read(out, format='csv')
     assert list(res['id']) == ['obj+1'] and list(res['class']) == ['qso']
+
+
+def test_dwarf_dominated_blend_is_star(monkeypatch):
+    import redx.core as core
+    real = core.fit_spectrum
+
+    def fake(spec, lib, dz=0.002):
+        f = real(spec, lib, dz=dz)
+        f['class'] = 'star'
+        f['blend'] = {'dchi2': 100.0, 'z': 6.8, 'qso_frac': 0.2, 'contaminant': 'STAR_SUDA_teff1200_logg5.0'}
+        return f
+
+    monkeypatch.setattr(core, 'fit_spectrum', fake)
+    monkeypatch.setattr(core, 'line_signif', lambda *a: 10.0)
+    r = redx.classify(spectrum('STAR_SUDA_teff2000_logg5.0', 0.0, snr=80))
+    assert r['class'] == 'star' and r['flags'].startswith('dwarf_dominated_blend') and not r['secure']
+    fig = diagnostic(r)
+    box = ' '.join(t.get_text() for t in fig.axes[0].texts)
+    assert 'dwarf_dominated_blend' in box and 'SECURE' not in box
+
+
+def test_secure_label_follows_verdict():
+    r = redx.classify(spectrum('QSO_selsing_ebv0.00', 2.5, snr=30))
+    box = ' '.join(t.get_text() for t in diagnostic(r).axes[0].texts)
+    assert ('SECURE' in box) == r['secure'] == r['verdict'].endswith('secure)')
