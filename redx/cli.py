@@ -73,7 +73,7 @@ def main(argv=None):
                 try:
                     r = classify(f)
                     wr.writerow(_row(f, r))
-                    if a.plots and np.isfinite(r.get('z_RedX', np.nan)):
+                    if a.plots:
                         stem = _stem(f)
                         diagnostic(r, out=os.path.join(a.plots, stem + '.png'), title_id=stem)
                 except Exception as e:

@@ -87,7 +87,7 @@ def test_cli_batch_and_figure(tmp_path):
     assert main(['--dir', str(tmp_path), '--out', str(tmp_path / 'res.csv'), '--plots', str(tmp_path / 'plots')]) == 0
     res = Table.read(tmp_path / 'res.csv', format='csv')
     assert list(res['id']) == ['obj0', 'obj1'] and list(res['class']) == ['qso', 'star']
-    assert sorted(p.name for p in (tmp_path / 'plots').iterdir()) == ['obj0.png']
+    assert sorted(p.name for p in (tmp_path / 'plots').iterdir()) == ['obj0.png', 'obj1.png']
     r = redx.classify(tmp_path / 'obj0_spherex_spectra.tbl')
     diagnostic(r, out=tmp_path / 'clean.png', info=False, lines=False)
     assert (tmp_path / 'clean.png').stat().st_size > 0
