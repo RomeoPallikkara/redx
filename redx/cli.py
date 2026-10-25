@@ -8,12 +8,11 @@ import argparse
 import numpy as np
 from .core import classify
 from .plot import diagnostic
+from .reader import SPIFF_BINNED
 
-_COLS = ['id', 'class', 'z_RedX', 'z_lo', 'z_hi', 'n_line_support', 'line_signif', 'z_lines', 'n_lines', 'signif',
-         'redchi2', 'n_bins', 'median_snr', 'template', 'flags', 'verdict']
-
-
-SPIFF_BINNED = 'binned_spectrum.csv'
+_COLS = ['id', 'class', 'z_RedX', 'z_lo', 'z_hi', 'secure', 'n_line_support', 'line_signif', 'z_lines', 'n_lines', 'signif',
+         'redchi2', 'chi2_sys', 'line_scale', 'n_bins', 'n_exp', 'n_clip', 'median_snr', 'template', 'star_type',
+         'star_type_range', 'star_lum', 'flags', 'verdict', 'library']
 
 
 def _stem(path):
@@ -60,12 +59,13 @@ def main(argv=None):
         files = sorted(f for ext in ('tbl', 'csv', 'fits') for f in glob.glob(os.path.join(a.dir, '*.' + ext)))
         if a.recursive:
             files += sorted(glob.glob(os.path.join(a.dir, '*', '**', SPIFF_BINNED), recursive=True))
+        files = [f for f in files if os.path.abspath(f) != os.path.abspath(a.out)]
         if not files:
             print('no spectra found in', a.dir)
             return 1
         if a.plots:
             os.makedirs(a.plots, exist_ok=True)
-        failed = []
+        failed, plot_failed, used = [], [], {}
         with open(a.out, 'w', newline='') as fh:
             wr = csv.DictWriter(fh, fieldnames=_COLS)
             wr.writeheader()
@@ -73,19 +73,28 @@ def main(argv=None):
                 try:
                     r = classify(f)
                     wr.writerow(_row(f, r))
-                    if a.plots:
-                        stem = _stem(f)
-                        diagnostic(r, out=os.path.join(a.plots, stem + '.png'), title_id=stem)
                 except Exception as e:
                     failed.append((os.path.basename(f), e))
                     print('  FAIL', os.path.basename(f), e)
+                    wr.writerow({'id': _stem(f), 'class': 'error', 'verdict': f'error: {type(e).__name__}: {e}'})
+                else:
+                    if a.plots:
+                        stem = _stem(f)
+                        used[stem] = used.get(stem, 0) + 1
+                        name = stem if used[stem] == 1 else f'{stem}_{used[stem]}'
+                        try:
+                            diagnostic(r, out=os.path.join(a.plots, name + '.png'), title_id=stem)
+                        except Exception as e:
+                            plot_failed.append((os.path.basename(f), e))
+                            print('  PLOT FAIL', os.path.basename(f), e)
                 if (i + 1) % 100 == 0:
                     print(f'  {i + 1}/{len(files)}')
-        print(f'wrote {a.out}  ({len(files) - len(failed)}/{len(files)} classified)')
+        print(f'wrote {a.out}  ({len(files) - len(failed)}/{len(files)} classified, {len(failed)} error rows)')
+        if plot_failed:
+            print(f'  {len(plot_failed)} figures failed; first: {plot_failed[0][0]}: {plot_failed[0][1]}')
         if failed:
             print(f'  {len(failed)} spectra failed; first: {failed[0][0]}: {failed[0][1]}')
-            return 1
-        return 0
+        return 1 if failed or plot_failed else 0
 
     if not a.spectrum:
         ap.print_help()
@@ -97,6 +106,8 @@ def main(argv=None):
     print(f"signif  : {_f(r['signif'], 2)}   redchi2: {_f(r['redchi2'], 2)}   n_bins: {r['n_bins']}   "
           f"SNR: {_f(r['median_snr'], 2)}")
     print(f"verdict : {r['verdict']}")
+    if r.get('star_type'):
+        print(f"star    : {r['star_type']}   (range {r['star_type_range']}, {r['star_lum']})")
     print(f"flags   : {r['flags']}")
     show = a.show
     if show is None:

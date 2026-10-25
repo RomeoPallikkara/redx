@@ -1,0 +1,47 @@
+file,spectral_type,grid_type,n_spec,blue_extension
+L0_beta.csv,L0 β,intermediate gravity,15,teff2300_logg4.5
+L0_gamma.csv,L0 γ,very low gravity,25,teff2300_logg4.5
+L0_delta.csv,L0 δ,extremely low gravity,7,teff2300_logg4.5
+L0.csv,L0,field,544,teff2300_logg4.5
+L1_beta.csv,L1 β,intermediate gravity,22,teff2100_logg4.0
+L1_gamma.csv,L1 γ,very low gravity,21,teff2100_logg4.0
+L1.csv,L1,field,399,teff2100_logg4.0
+L2_beta.csv,L2 β,intermediate gravity,19,teff2000_logg4.5
+L2_gamma.csv,L2 γ,very low gravity,9,teff2000_logg4.5
+L2.csv,L2,field,382,teff2000_logg4.5
+L3_beta.csv,L3 β,intermediate gravity,19,teff1900_logg4.5
+L3_gamma.csv,L3 γ,very low gravity,13,teff1900_logg4.5
+L3.csv,L3,field,178,teff1900_logg4.5
+L4_beta.csv,L4 β,intermediate gravity,11,teff1800_logg4.5
+L4_gamma.csv,L4 γ,very low gravity,16,teff1800_logg4.5
+L4.csv,L4,field,132,teff1800_logg4.5
+L5_beta_gamma.csv,L5 β/γ,very low gravity,9,teff1800_logg4.5
+L5.csv,L5,field,112,teff1800_logg4.5
+L6.csv,L6,field,56,teff1700_logg4.5
+L7_gamma.csv,L7 γ,very low gravity,8,teff1700_logg4.5
+L7.csv,L7,field,57,teff1700_logg4.5
+L8.csv,L8,field,35,teff1600_logg5.0
+L9.csv,L9,field,51,teff1500_logg5.0
+M8_beta.csv,M8 β,intermediate gravity,22,teff2500_logg4.0
+M8.csv,M8,field,76,teff2500_logg4.0
+M9_beta.csv,M9 β,intermediate gravity,7,teff2400_logg4.0
+M9_gamma.csv,M9 γ,very low gravity,6,teff2400_logg4.0
+M9.csv,M9,field,71,teff2400_logg4.0
+T0.csv,T0,field,31,teff1600_logg5.0
+T1.csv,T1,field,38,teff1400_logg6.0
+T2.csv,T2,field,56,teff1400_logg6.0
+T3.csv,T3,field,47,teff1400_logg6.0
+T4.csv,T4,field,58,teff1200_logg5.0
+T5.csv,T5,field,85,teff1100_logg5.0
+T6.csv,T6,field,0,teff1000_logg5.5
+T7.csv,T7,field,0,teff0900_logg5.5
+T8.csv,T8,field,0,teff0800_logg5.5
+T9.csv,T9,field,0,teff0700_logg5.5
+Y0.csv,Y0,field,0,teff0700_logg5.5
+Y1.csv,Y1,field,0,teff0700_logg5.5
+d_sdL8.csv,d/sdL8,slight subdwarfs,28,teff1600_logg5.0
+d_sdT1.csv,d/sdT1,slight subdwarfs,2,teff1400_logg6.0
+esdL8.csv,esdL8,extreme subdwarfs,2,teff1600_logg5.0
+sdL3.5.csv,sdL3.5,subdwarfs,4,teff1900_logg4.5
+sdM9.5.csv,sdM9.5,subdwarfs,4,teff2300_logg4.5
+sdT4.csv,sdT4,subdwarfs,3,teff1200_logg5.0

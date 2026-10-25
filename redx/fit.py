@@ -1,10 +1,13 @@
-"""Template chi2 fit over a redshift grid: one non-negative amplitude per template and z, templates binned as the
+"""Template chi2 fit over a redshift grid: one non-negative amplitude per template and z. Fitted to the single
+exposures (spec.meta['exposures'], templates.Exposed) when there are at least MIN_EXPOSURES, else to the binned
 spectrum (templates.Binned). P(z) = exp(-chi2 / 2s), s = max(1, reduced chi2)."""
 import numpy as np
-from .templates import Binned
+from .templates import Binned, Exposed
 
 _trapezoid = getattr(np, 'trapezoid', None) or np.trapz
 _BINNED = {}
+_EXPOSED = None
+MIN_EXPOSURES = 20
 
 
 def bin_width(spec):
@@ -20,23 +23,35 @@ def binned_library(library, dln):
     return _BINNED[key][1]
 
 
-def chi2_amp(d, m, w):
-    """Chi2 and best non-negative amplitude of each model m[..., :] for data d, weights w."""
+def exposed_library(library):
+    """The library as measured by single exposures, cached."""
+    global _EXPOSED
+    if _EXPOSED is None or _EXPOSED[0] is not library:
+        _EXPOSED = (library, [Exposed(t) for t in library])
+    return _EXPOSED[1]
+
+
+def chi2_amp(d, m, w, amp_min=0.0):
+    """Chi2 and best amplitude >= amp_min (>= 0) of each model m[..., :] for data d, weights w."""
     smm, sdm, sdd = np.sum(w * m * m, -1), np.sum(w * d * m, -1), np.sum(w * d * d)
-    ok = (smm > 0) & (sdm > 0)
-    smm = np.where(ok, smm, 1.0)
-    return np.where(ok, sdd - sdm * sdm / smm, sdd), np.where(ok, sdm / smm, 0.0)
+    a = np.where(smm > 0, np.maximum(sdm / np.where(smm > 0, smm, 1.0), max(amp_min, 0.0)), 0.0)
+    return sdd - 2.0 * a * sdm + a * a * smm, a
 
 
 def fit_spectrum(spec, library, dz=0.002, zmax_global=7.0):
-    """Best fit per class, P(z) of the winning class and, if a star or galaxy wins, the QSO blend fit."""
-    w = np.where(spec.sigma > 0, 1.0 / spec.sigma ** 2, 0.0)
-    zgrid = np.arange(0.0, zmax_global + 1e-9, dz)
+    """Best fit per class and P(z) of the winning class; dln: bin width of the binned spectrum."""
     dln = bin_width(spec)
+    ex = spec.meta.get('exposures')
+    if ex is not None and ex.n >= MIN_EXPOSURES:
+        data, lib = ex, exposed_library(library)
+    else:
+        data, lib = spec, binned_library(library, dln)
+    w = np.where(data.sigma > 0, 1.0 / data.sigma ** 2, 0.0)
+    zgrid = np.arange(0.0, zmax_global + 1e-9, dz)
     per_class = {}
-    for t in binned_library(library, dln):
+    for t in lib:
         zs = zgrid[zgrid <= t.zmax] if t.z_free else np.zeros(1)
-        c, _ = chi2_amp(spec.flux, t.flux_obs(spec.lam_um, zs[:, None]), w)
+        c, _ = chi2_amp(data.flux, t.flux_obs(data.lam_um, zs[:, None]), w, t.amp_min)
         cur = per_class.setdefault(t.cls, {'chi2': np.inf, 'chi2_z': None})
         if t.z_free:
             c_z = np.concatenate([c, np.full(len(zgrid) - len(zs), np.inf)])
@@ -47,20 +62,28 @@ def fit_spectrum(spec, library, dz=0.002, zmax_global=7.0):
 
     ranked = sorted(per_class, key=lambda k: per_class[k]['chi2'])
     win = per_class[ranked[0]]
-    dof = max(spec.n - 2, 1)
+    dof = max(data.n - 2, 1)
     res = {'class': ranked[0], 'z': win['z'], 'redchi2': win['chi2'] / dof, 'template': win['template'],
-           'n_bins': spec.n, 'zgrid': zgrid, 'dln': dln,
+           'n_bins': spec.n, 'n_exp': data.n if data is ex else 0, 'zgrid': zgrid, 'dln': dln,
            'per_class': {k: {'redchi2': v['chi2'] / dof, 'z': v['z'], 'template': v['template']}
                          for k, v in per_class.items()},
            'runner_up': ranked[1] if len(ranked) > 1 else None,
            'dchi2_class': per_class[ranked[1]]['chi2'] - win['chi2'] if len(ranked) > 1 else np.inf}
     res.update(_posterior(win['chi2_z'], zgrid, res['redchi2']))
-    if 'qso' in per_class and ranked[0] != 'qso':
-        b = _blend(spec, w, binned_library(library, dln), zgrid)
-        b.update(_posterior(b['chi2_z'], zgrid, b['chi2'] / max(spec.n - 3, 1)), zgrid=zgrid)
-        b['dchi2'] = (win['chi2'] - b['chi2']) / max(1.0, b['chi2'] / max(spec.n - 3, 1))
-        res['blend'] = b
     return res
+
+
+def model(spec, t, z, lam=None):
+    """Binned template t at z fitted to spec with amplitude >= amp_min (as in the fit), on lam (default: the bins)."""
+    w = np.where(spec.sigma > 0, spec.sigma ** -2.0, 0.0)
+    _, a = chi2_amp(spec.flux, t.flux_obs(spec.lam_um, z), w, t.amp_min)
+    return a * t.flux_obs(spec.lam_um if lam is None else lam, z)
+
+
+def chi2_sys(spec, m, eps, npar=2):
+    """Reduced chi2 of model m with a template systematic eps * m added to the errors."""
+    ok = spec.sigma > 0
+    return float(np.sum((spec.flux - m)[ok] ** 2 / (spec.sigma[ok] ** 2 + (eps * m[ok]) ** 2)) / max(ok.sum() - npar, 1))
 
 
 def _posterior(chi2_z, zgrid, redchi2):
@@ -85,31 +108,6 @@ def peak_interval(zgrid, pz, z, frac=0.68):
     order = np.argsort(p)[::-1]
     keep = order[:np.searchsorted(np.cumsum(p[order]) / p.sum(), frac) + 1] + lo
     return float(zgrid[keep].min()), float(zgrid[keep].max())
-
-
-def _blend(spec, w, lib, zgrid):
-    """QSO template at z plus a z = 0 star or galaxy template (a neighbour in the same pixel), both amplitudes
-    positive: chi2(z), the best pair and the QSO share of the model flux."""
-    d = spec.flux
-    other = [t for t in lib if t.cls != 'qso']
-    S = np.array([t.flux_obs(spec.lam_um, 0.0) for t in other])
-    sss, sds, sdd = S ** 2 @ w, S @ (w * d), np.sum(w * d * d)
-    out = {'chi2': np.inf, 'chi2_z': np.full(len(zgrid), np.inf)}
-    for t in (t for t in lib if t.cls == 'qso'):
-        zs = zgrid[zgrid <= t.zmax]
-        Q = t.flux_obs(spec.lam_um, zs[:, None])
-        sqq, sdq, sqs = Q ** 2 @ w, Q @ (w * d), (Q * w) @ S.T
-        det = sqq[:, None] * sss - sqs ** 2
-        with np.errstate(divide='ignore', invalid='ignore'):
-            a = (sdq[:, None] * sss - sds * sqs) / det
-            b = (sds * sqq[:, None] - sdq[:, None] * sqs) / det
-        c = np.where((det > 0) & (a > 0) & (b > 0), sdd - a * sdq[:, None] - b * sds, np.inf)
-        out['chi2_z'][:len(zs)] = np.minimum(out['chi2_z'][:len(zs)], c.min(1))
-        i, k = np.unravel_index(np.argmin(c), c.shape)
-        if c[i, k] < out['chi2']:
-            fq, fs = a[i, k] * Q[i].sum(), b[i, k] * S[k].sum()
-            out.update(chi2=c[i, k], z=zs[i], template=t.name, contaminant=other[k].name, qso_frac=fq / (fq + fs))
-    return out
 
 
 def _detection_signif(chi2_z, zgrid, half_width=0.05):

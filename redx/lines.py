@@ -65,6 +65,25 @@ def line_signif(spec, resid, z):
     return s if np.isfinite(s) else np.nan
 
 
+def line_scale(spec, m, z, d_ln=0.09):
+    """Strength of the strong lines in the data relative to model m at z, from the contrast of each line with the flux
+    d_ln (about 2 bins) to either side; returns (scale, (1 - scale) / its error). 1: lines as the model predicts."""
+    ok = spec.sigma > 0
+    ll, var = np.log(spec.lam_um[ok]), spec.sigma[ok] ** 2
+    x = np.log(_REST_A * (1 + z) / 1e4)
+    x = x[(x - d_ln >= ll[0]) & (x + d_ln <= ll[-1])]
+    if not len(x):
+        return np.nan, np.nan
+    con = lambda f: np.interp(x, ll, f) - 0.5 * (np.interp(x - d_ln, ll, f) + np.interp(x + d_ln, ll, f))
+    cd, cm, v = con(spec.flux[ok]), con(m[ok]), np.interp(x, ll, var) + 0.25 * (np.interp(x - d_ln, ll, var)
+                                                                                + np.interp(x + d_ln, ll, var))
+    smm = np.sum(cm ** 2 / v)
+    if not smm > 0:
+        return np.nan, np.nan
+    a = np.sum(cd * cm / v) / smm
+    return float(a), float((1.0 - a) * np.sqrt(smm))
+
+
 def line_redshift(spec, resid, dz=0.002, zmax=7.0):
     """z maximising the matched filter over at least two lines; returns (z, lines above 2 sigma, score, zgrid)."""
     zgrid = np.arange(0.0, zmax + 1e-9, dz)
