@@ -64,8 +64,9 @@ def fit_spectrum(spec, library, dz=0.002, zmax_global=7.0):
     win = per_class[ranked[0]]
     dof = max(data.n - 2, 1)
     res = {'class': ranked[0], 'z': win['z'], 'redchi2': win['chi2'] / dof, 'template': win['template'],
+           'chi2': win['chi2'], 'chi2_null': float(np.sum(w * data.flux ** 2)), 'dof': dof,
            'n_bins': spec.n, 'n_exp': data.n if data is ex else 0, 'zgrid': zgrid, 'dln': dln,
-           'per_class': {k: {'redchi2': v['chi2'] / dof, 'z': v['z'], 'template': v['template']}
+           'per_class': {k: {'redchi2': v['chi2'] / dof, 'z': v['z'], 'template': v['template'], 'chi2_z': v['chi2_z']}
                          for k, v in per_class.items()},
            'runner_up': ranked[1] if len(ranked) > 1 else None,
            'dchi2_class': per_class[ranked[1]]['chi2'] - win['chi2'] if len(ranked) > 1 else np.inf}

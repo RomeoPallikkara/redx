@@ -72,16 +72,16 @@ def diagnostic(result, out=None, show=False, annotations=None, spec=None,
 
     rows = []
     if info:
-        rows = ([f'ID {title_id}'] if title_id is not None else []) + \
-            [f'class    = {cls.upper()}', f'z_RedX   = {fmt_z(z)}'] + \
-            [f'{k:<9}= {fmt_z(v)}' for k, v in (annotations or {}).items()]
-        if cls == 'qso':
-            ns = result.get('n_line_support', 0) or 0
-            rows.append(f'RedX_qual= {ns}-line ' + ('SECURE' if result.get('secure') else
-                                                    'ALIAS-RISK' if ns < 2 else 'CHECK z'))
-        warn = [f for f in str(result.get('flags', '')).split(';') if f and f != 'ok']
-        if warn:
-            rows.append(f"flags    = {', '.join(warn)}")
+        rows = ([f'ID {title_id}'] if title_id is not None else []) + [f'class    = {cls.upper()}']
+        if cls in ('qso', 'galaxy'):
+            rows.append(f'z_RedX   = {fmt_z(z)}')
+        rows += [f'{k:<9}= {fmt_z(v)}' for k, v in (annotations or {}).items()]
+        if result.get('quality'):
+            rows.append(f"quality  = {result['quality']}")
+        if result.get('reason'):
+            rows.append(f"reason   = {result['reason']}")
+        if result.get('warnings'):
+            rows.append(f"warnings = {result['warnings'].replace(';', ', ')}")
         if template_origin(result.get('template')):
             rows.append(f"template = {template_origin(result.get('template'))}")
     f = fl[np.isfinite(fl)]

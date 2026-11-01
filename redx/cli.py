@@ -6,13 +6,13 @@ import glob
 import csv
 import argparse
 import numpy as np
-from .core import classify
+from .core import classify, summary
 from .plot import diagnostic
 from .reader import SPIFF_BINNED
 
-_COLS = ['id', 'class', 'z_RedX', 'z_lo', 'z_hi', 'secure', 'n_line_support', 'line_signif', 'z_lines', 'n_lines', 'signif',
-         'redchi2', 'chi2_sys', 'line_scale', 'n_bins', 'n_exp', 'n_clip', 'median_snr', 'template', 'star_type',
-         'star_type_range', 'star_lum', 'flags', 'verdict', 'library']
+_COLS = ['id', 'class', 'z_RedX', 'z_lo', 'z_hi', 'quality', 'reason', 'warnings', 'star_type', 'star_type_range', 'star_lum',
+         'median_snr', 'n_bins', 'n_exp', 'n_clip', 'n_line_support', 'line_signif', 'z_lines', 'n_lines', 'redchi2',
+         'chi2_sys', 'line_scale', 'signif', 'template', 'library']
 
 
 def _stem(path):
@@ -26,10 +26,6 @@ def _stem(path):
             stem = stem[:-len(ext)]
             break
     return stem[:-len('_spherex_spectra')] if stem.endswith('_spherex_spectra') else stem
-
-
-def _f(v, nd):
-    return f'{v:.{nd}f}' if isinstance(v, (float, np.floating)) else str(v)
 
 
 def _row(path, r):
@@ -76,7 +72,7 @@ def main(argv=None):
                 except Exception as e:
                     failed.append((os.path.basename(f), e))
                     print('  FAIL', os.path.basename(f), e)
-                    wr.writerow({'id': _stem(f), 'class': 'error', 'verdict': f'error: {type(e).__name__}: {e}'})
+                    wr.writerow({'id': _stem(f), 'class': 'error', 'reason': f'error: {type(e).__name__}: {e}'})
                 else:
                     if a.plots:
                         stem = _stem(f)
@@ -100,15 +96,7 @@ def main(argv=None):
         ap.print_help()
         return 1
     r = classify(a.spectrum)
-    print(f"class   : {r['class']}")
-    print(f"z_RedX  : {_f(r['z_RedX'], 3)}   (68% [{_f(r['z_lo'], 3)}, {_f(r['z_hi'], 3)}])")
-    print(f"z_lines : {_f(r['z_lines'], 3)}   (n_lines={r.get('n_lines')})")
-    print(f"signif  : {_f(r['signif'], 2)}   redchi2: {_f(r['redchi2'], 2)}   n_bins: {r['n_bins']}   "
-          f"SNR: {_f(r['median_snr'], 2)}")
-    print(f"verdict : {r['verdict']}")
-    if r.get('star_type'):
-        print(f"star    : {r['star_type']}   (range {r['star_type_range']}, {r['star_lum']})")
-    print(f"flags   : {r['flags']}")
+    print(summary(r))
     show = a.show
     if show is None:
         show = not a.plot and bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))

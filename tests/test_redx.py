@@ -58,13 +58,13 @@ def test_qso_redshift(name, z):
     assert r['class'] == 'qso'
     assert abs(r['z_RedX'] - z) / (1 + z) < 0.01
     assert r['z_lo'] < r['z_RedX'] < r['z_hi']
-    assert r['line_signif'] > 3 and 'secure' in r['verdict']
+    assert r['line_signif'] > 3 and r['quality'] == 'secure' and r['reason'] == ''
     assert abs(r['z_lines'] - z) / (1 + z) < 0.05
 
 
 def test_galaxy_redshift():
     r = redx.classify(spectrum('GAL_Sc', 0.8))
-    assert r['class'] == 'galaxy' and abs(r['z_RedX'] - 0.8) / 1.8 < 0.01
+    assert r['class'] == 'galaxy' and abs(r['z_RedX'] - 0.8) / 1.8 < 0.01 and r['quality'] == 'probable'
 
 
 @pytest.mark.parametrize('name', ['STAR_SUDA_teff1500_logg5.0', 'STAR_SUDA_teff2800_logg5.0',
@@ -78,7 +78,7 @@ def test_star(name):
 
 def test_too_few_bins():
     r = redx.classify(Spectrum(np.linspace(1, 2, 4), np.ones(4), np.ones(4)))
-    assert r['class'] == 'inconclusive' and r['flags'] == 'too_few_bins'
+    assert r['class'] == 'inconclusive' and r['reason'] == 'no_data'
 
 
 def test_readers_agree(tmp_path):
@@ -161,10 +161,23 @@ def test_exposures_fallback(tmp_path):
     assert redx.classify(tmp_path / 'few.tbl')['n_exp'] == 0          # fewer than MIN_EXPOSURES: binned fit
 
 
-def test_secure_label_follows_verdict():
+def test_figure_and_summary_show_the_result():
     r = redx.classify(spectrum('QSO_selsing_ebv0.00', 2.5, snr=30))
     box = ' '.join(t.get_text() for t in diagnostic(r).axes[0].texts)
-    assert ('SECURE' in box) == r['secure'] == r['verdict'].endswith('secure)')
+    assert f"quality  = {r['quality']}" in box and 'reason' not in box
+    assert any(line.startswith('quality') for line in redx.summary(r).splitlines())
+
+
+@pytest.mark.parametrize('name,z,snr', [('QSO_selsing_ebv0.00', 2.5, 30), ('QSO_selsing_ebv0.00', 2.5, 0.8),
+                                        ('GAL_Sc', 0.8, 30), ('STAR_SPIFF_L5', 0.0, 30), ('STAR_SPIFF_L5', 0.0, 0.8)])
+def test_every_result_is_explained(name, z, snr):
+    r = redx.classify(spectrum(name, z, snr=snr))
+    warnings = [w for w in r['warnings'].split(';') if w]
+    if r['class'] == 'inconclusive':
+        assert r['reason'] in redx.REASONS and r['quality'] == '' and not warnings and np.isnan(r['z_RedX'])
+    else:
+        assert r['reason'] == '' and r['quality'] in redx.QUALITY and all(w in redx.WARNINGS for w in warnings)
+        assert (r['quality'] == 'secure') == (not warnings and r['class'] != 'galaxy')
 
 
 def test_import_btsettl(tmp_path, monkeypatch):
@@ -193,7 +206,7 @@ def test_library_id():
 def test_figure_without_redshift(tmp_path):
     noisy = redx.classify(spectrum('QSO_selsing_ebv0.00', 2.5, snr=0.5))
     few = redx.classify(Spectrum(np.linspace(1, 4, 4), np.ones(4), np.ones(4)))
-    assert noisy['class'] == 'inconclusive' and few['flags'] == 'too_few_bins'
+    assert noisy['class'] == 'inconclusive' and few['reason'] == 'no_data'
     for i, r in enumerate((noisy, few)):
         diagnostic(r, out=tmp_path / f'f{i}.png')
         assert (tmp_path / f'f{i}.png').stat().st_size > 0
@@ -223,7 +236,7 @@ def test_cli_error_row_and_output_in_input_folder(tmp_path):
         assert main(['--dir', str(tmp_path), '--out', str(out)]) == 1
         res = Table.read(out, format='csv')
         assert list(res['id']) == ['a', 'bad'] and list(res['class']) == ['qso', 'error']
-    assert 'secure' in res.colnames and str(res['verdict'][1]).startswith('error:')
+    assert 'quality' in res.colnames and str(res['reason'][1]).startswith('error:')
 
 
 @pytest.fixture
@@ -248,9 +261,9 @@ def _qso_star_mixture(a, star):
 
 def test_qso_star_mixture_is_not_fitted_as_a_sum(warm_star):
     r = _qso_star_mixture(0.6, warm_star)
-    assert 'blend' not in r['_fit'] and r['class'] == 'inconclusive' and 'poor_fit' in r['flags']
+    assert 'blend' not in r['_fit'] and r['class'] == 'inconclusive' and r['reason'] == 'poor_fit'
     box = ' '.join(t.get_text() for t in diagnostic(r).axes[0].texts)
-    assert 'poor_fit' in box and 'SECURE' not in box
+    assert 'poor_fit' in box and 'quality' not in box
 
 
 @pytest.mark.parametrize('name,true', [('STAR_SPIFF_T5', 85.0), ('STAR_SPIFF_L2', 72.0), ('STAR_SPIFF_M9', 69.0)])
@@ -282,7 +295,7 @@ def test_galaxy_with_qso_lines_is_inconclusive(monkeypatch):
 
     monkeypatch.setattr(core, 'fit_spectrum', fake)
     r = redx.classify(spectrum('QSO_selsing_ebv0.00', 3.5))
-    assert r['class'] == 'inconclusive' and 'galaxy_or_qso' in r['flags'] and np.isnan(r['z_RedX'])
+    assert r['class'] == 'inconclusive' and r['reason'] == 'galaxy_or_qso' and np.isnan(r['z_RedX'])
 
 
 def test_import_irtf(tmp_path, monkeypatch):
@@ -340,17 +353,17 @@ def test_weak_single_line_is_inconclusive(monkeypatch):
     monkeypatch.setattr(core, 'line_support', lambda *a, **k: 1)
     monkeypatch.setattr(core, 'line_signif', lambda *a: 5.0)
     r = redx.classify(spectrum('QSO_selsing_ebv0.00', 2.4, snr=30.0))
-    assert r['class'] == 'inconclusive' and 'weak_single_line' in r['flags'] and not r['secure']
+    assert r['class'] == 'inconclusive' and r['reason'] == 'weak_line' and r['quality'] == ''
     monkeypatch.setattr(core, 'line_signif', lambda *a: 7.0)
     r = redx.classify(spectrum('QSO_selsing_ebv0.00', 2.4, snr=30.0))
-    assert r['class'] == 'qso' and 'single_line_alias_risk' in r['flags']
+    assert r['class'] == 'qso' and 'single_line' in r['warnings'] and r['quality'] != 'secure'
 
 
 def test_poor_fit_is_inconclusive():
     rng = np.random.default_rng(5)
     lam = np.sort(rng.uniform(0.76, 5.0, 260))
     r = redx.classify(noisy(lam, np.where(lam < 2.0, 100.0, 300.0), 30, rng))      # a step: no template fits it
-    assert r['class'] == 'inconclusive' and 'poor_fit' in r['flags'] and r['chi2_sys'] > 5
+    assert r['class'] == 'inconclusive' and r['reason'] == 'poor_fit' and r['chi2_sys'] > 5
 
 
 def test_absent_lines():
@@ -370,3 +383,12 @@ def test_library_is_physical():
     names = [t.name for t in LIB.values()]
     assert not any('_bb' in n or 'plnt' in n for n in names)      # stars are stellar spectra only
     assert all(a is not None and a >= 0 for *_, a in _irtf())
+
+
+def test_low_snr_reports_only_qso(monkeypatch):
+    monkeypatch.setattr(redx.core, '_low_quality', lambda spec, fit: True)
+    q = redx.classify(spectrum('QSO_selsing_ebv0.00', 2.5))
+    s = redx.classify(spectrum('STAR_SPIFF_L5', 0.0))
+    g = redx.classify(spectrum('GAL_Sc', 0.8))
+    assert q['class'] == 'qso' and 'low_snr' in q['warnings'] and q['quality'] == 'low'
+    assert s['class'] == g['class'] == 'inconclusive' and np.isnan(g['z_RedX']) and s['star_type'] == '' and s['reason'] == g['reason'] == 'too_noisy'

@@ -2,9 +2,10 @@
 
     import redx
     r = redx.classify('spectrum.tbl')
+    print(redx.summary(r))
 """
 from importlib.metadata import version as _version, PackageNotFoundError
-from .core import classify
+from .core import classify, summary, QUALITY, REASONS, WARNINGS
 from .reader import read_spectrum, Spectrum
 from .templates import build_library
 
@@ -13,4 +14,4 @@ try:
 except PackageNotFoundError:
     __version__ = 'unknown'
 
-__all__ = ['__version__', 'classify', 'read_spectrum', 'Spectrum', 'build_library']
+__all__ = ['__version__', 'classify', 'QUALITY', 'REASONS', 'WARNINGS', 'summary', 'read_spectrum', 'Spectrum', 'build_library']

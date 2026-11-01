@@ -40,32 +40,73 @@ redx --dir FOLDER --out results.csv   # every *.tbl, *.csv, *.fits in FOLDER
 ```python
 import redx
 r = redx.classify('spectrum.tbl')
-print(r['class'], r['z_RedX'], r['z_lo'], r['z_hi'], r['flags'], r['star_type'])
+print(r['class'], r['z_RedX'], r['quality'], r['reason'], r['warnings'])
+print(redx.summary(r))      # the same result as readable text
 ```
 
-Input: a SPIFF run (`binned_spectrum.csv` with its `results.csv` in the same folder),
-an IRSA forced-photometry `.tbl` (binned to 44 log-λ bins), or a binned
-`.csv`/`.fits` with `wavelength_angstrom`, `flux_ujy_weighted_mean`,
-`flux_ujy_weighted_sem`. Fluxes are f_ν in µJy. Keep `results.csv` next to
-`binned_spectrum.csv`: the templates are fitted to the single exposures it lists
-(`n_exp` in the results); without it RedX fits the binned spectrum.
+## Results
 
-Main outputs: `class` (`qso`, `galaxy`, `star`, `inconclusive`), `z_RedX` with its
-68% interval `z_lo`–`z_hi`, the line-only redshift `z_lines`, `verdict` and `flags`;
-for stars `star_type`, `star_type_range` and `star_lum` (`dwarf`, `giant`, `subdwarf`
-or `ambiguous`).
-A QSO needs emission lines at `z_RedX` (`line_signif` > 3) and a line-only redshift
-`z_lines` within 0.05 (1+z); it is `secure` when at least two lines support it,
-otherwise flagged `single_line_alias_risk`. Other flags: `class_ambiguous`,
-`marginal_snr`. A fit that does not meet these is `inconclusive` with the reason in
-`verdict` and `flags`: `z_lines_disagree`, `misfit_single_line` (reduced χ² > 20 with
-one line of significance < 12), `weak_single_line` (one line, of significance < 6), `galaxy_or_qso` (galaxy fit, but the quasar fit is
-within a factor 1.5 in χ² and has lines of significance > 5 at its redshift),
-`lines_absent` (the emission lines of the quasar fit are observed at < 0.3 of their
-predicted strength, at > 5σ; `line_scale` is that ratio), and for any class `poor_fit`
-(no class fits: the best fit has reduced χ² > 5 with a 10% template systematic added
-to the errors, `chi2_sys`).
-The figure shows `SECURE` only for a secure QSO, and lists the flags.
+Each spectrum gets one row (CSV with `--out`; a dict from `redx.classify`).
+
+| Column | Meaning |
+|---|---|
+| `class` | `qso`, `galaxy`, `star` or `inconclusive` |
+| `z_RedX`, `z_lo`, `z_hi` | redshift and 68% interval (QSO and galaxy; empty otherwise) |
+| `quality` | how far to trust a classified source: `secure`, `probable` or `low` (empty if inconclusive) |
+| `reason` | why the result is `inconclusive`: one code (empty otherwise) |
+| `warnings` | `;`-separated warnings on a classified source (empty if none) |
+| `star_type`, `star_type_range`, `star_lum` | stars only: best spectral type, range of acceptable types, luminosity class (`dwarf`, `giant`, `subdwarf` or `ambiguous`) |
+
+Inconclusive is preferred to a wrong answer: a spectrum that fails any test below is
+`inconclusive`, with the first failed test in `reason`.
+
+**quality**
+
+| Value | Meaning |
+|---|---|
+| `secure` | no warning: a QSO with two or more emission lines at `z_RedX`, or a star with a clear class and median S/N per bin ≥ 4 |
+| `probable` | classified, with at least one warning; every galaxy (stars can be fitted as low-z galaxies) |
+| `low` | QSO from a `low_snr` spectrum whose emission lines pass every test |
+
+**warnings**
+
+| Value | Meaning |
+|---|---|
+| `single_line` | QSO redshift from one emission line: an alias is possible |
+| `class_ambiguous` | the second-best class is within Δχ² = 2 |
+| `marginal_snr` | median S/N per bin 2–4 |
+| `low_snr` | median S/N per bin < 2, fewer than 10 bins, or fewer than 6 bins with flux > 1σ. The continuum then does not fix the class, so only a QSO is reported |
+
+**reason**
+
+| Value | Meaning |
+|---|---|
+| `no_data` | fewer than 6 usable bins |
+| `too_noisy` | `low_snr` spectrum without QSO emission lines |
+| `galaxy_or_qso` | galaxy fit, but the QSO fit has χ² within a factor 1.5 and emission lines of significance > 5 at its redshift |
+| `no_lines` | QSO fit without emission lines at its redshift (`line_signif` ≤ 3) |
+| `z_disagree` | the line-only redshift `z_lines` differs from `z_RedX` by more than 0.05 (1+z) |
+| `weak_line` | a single emission line of significance < 6, or < 12 with reduced χ² > 20 |
+| `lines_absent` | the emission lines of the QSO fit are observed at < 0.3 of their predicted strength, at > 5σ |
+| `poor_fit` | no class fits: reduced χ² > 5 with a 10% template error added (`chi2_sys`) |
+
+The same descriptions are in `redx.QUALITY`, `redx.WARNINGS` and `redx.REASONS`.
+The figure (`--plot`) shows the spectrum, the best fit and these values.
+
+**Diagnostic columns**
+
+| Column | Meaning |
+|---|---|
+| `median_snr` | median S/N per bin of the binned spectrum |
+| `n_bins`, `n_exp`, `n_clip` | bins; single exposures fitted (0: binned spectrum fitted); exposures rejected as outliers |
+| `n_line_support` | emission lines that support the QSO `z_RedX` |
+| `line_signif` | significance of the emission lines at the QSO `z_RedX` |
+| `z_lines`, `n_lines` | redshift from the emission-line search alone, and the lines it uses |
+| `redchi2` | reduced χ² of the best fit |
+| `chi2_sys` | reduced χ² with a 10% template error added |
+| `line_scale` | observed / predicted strength of the QSO emission lines |
+| `signif` | √Δχ² between the best redshift and the best one > 0.05 away |
+| `template`, `library` | best-fitting template; identifier of the template set |
 
 ## Method
 
@@ -80,7 +121,7 @@ are dropped, and 3% of the flux, the repeatability of a single SPHEREx measureme
 (SPHEREx Explanatory Supplement v2.0), is added to each error. With fewer than 20
 exposures the binned spectrum is fitted instead (templates averaged over a channel,
 R ≈ 40 below 3.8 µm, ≈ 120 above, and over the bins). The line search and the
-rules below use the binned spectrum. The class with the lowest χ² wins; a quasar also
+tests under Results use the binned spectrum. The class with the lowest χ² wins; a quasar also
 needs its emission lines at the fitted redshift. P(z) ∝ exp(−χ²/2s) with
 s = max(1, χ²_ν); the 68% interval includes a systematic 0.0033 (1+z).
 
